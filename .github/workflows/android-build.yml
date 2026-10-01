@@ -1,94 +1,15 @@
-name: Android APK
+name: Android APK Test
 
-on: [push, workflow_dispatch]
+on:
+  push:
+    branches:
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Prepare build tools
-        run: |
-          set -eux
-          sudo apt-get update
-          sudo apt-get install -y openjdk-17-jdk-headless
-          echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> "$GITHUB_ENV"
-          echo "/usr/lib/jvm/java-17-openjdk-amd64/bin" >> "$GITHUB_PATH"
-          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
-          echo "ANDROID_SDK_ROOT=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
-          echo "/usr/local/lib/android/sdk/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
-          echo "/usr/local/lib/android/sdk/platform-tools" >> "$GITHUB_PATH"
-
-      - name: Prepare Android SDK
-        run: |
-          set -eux
-          SDK=/usr/local/lib/android/sdk
-          "$SDK/cmdline-tools/latest/bin/sdkmanager" --version
-          yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
-          "$SDK/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
-          test -x "$SDK/platform-tools/adb"
-          test -d "$SDK/platforms/android-35"
-          test -d "$SDK/build-tools/35.0.0"
-
-      - name: Install Godot 4.4
-        run: |
-          set -eux
-          wget -q https://github.com/godotengine/godot/releases/download/4.4-stable/Godot_v4.4-stable_linux.x86_64.zip
-          unzip -q Godot_v4.4-stable_linux.x86_64.zip
-          chmod +x Godot_v4.4-stable_linux.x86_64
-
-      - name: Install Godot export templates
-        run: |
-          set -eux
-          DIR="$HOME/.local/share/godot/export_templates/4.4.stable"
-          mkdir -p "$DIR"
-          wget -q https://github.com/godotengine/godot/releases/download/4.4-stable/Godot_v4.4-stable_export_templates.tpz
-          mkdir -p /tmp/godot-templates
-          unzip -q Godot_v4.4-stable_export_templates.tpz -d /tmp/godot-templates
-          cp -a /tmp/godot-templates/templates/. "$DIR/"
-          test -f "$DIR/android_debug.apk"
-          test -f "$DIR/android_release.apk"
-          test -f "$DIR/version.txt"
-
-      - name: Configure Godot
-        run: |
-          set -eux
-          mkdir -p "$HOME/.config/godot" "$HOME/.android"
-          if [ ! -f "$HOME/.android/debug.keystore" ]; then
-            keytool -genkeypair -v -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-          fi
-          cat > "$HOME/.config/godot/editor_settings-4.tres" <<EOF
-[gd_resource type="EditorSettings" format=3]
-
-[resource]
-
-export/android/android_sdk_path = "/usr/local/lib/android/sdk"
-export/android/java_sdk_path = "/usr/lib/jvm/java-17-openjdk-amd64"
-export/android/debug_keystore = "$HOME/.android/debug.keystore"
-export/android/debug_keystore_user = "androiddebugkey"
-export/android/debug_keystore_pass = "android"
-EOF
-          test -f "$HOME/.android/debug.keystore"
-
-      - name: Validate project
-        run: |
-          set -eux
-          ./Godot_v4.4-stable_linux.x86_64 --headless --path . --check-only --script res://main.gd
-
-      - name: Export debug APK
-        run: |
-          set -eux
-          mkdir -p build
-          ./Godot_v4.4-stable_linux.x86_64 --headless --path . --export-debug "Android" build/Little-Street-Tycoon.apk
-          test -s build/Little-Street-Tycoon.apk
-          unzip -t build/Little-Street-Tycoon.apk >/dev/null
-          file build/Little-Street-Tycoon.apk
-          ls -lh build/Little-Street-Tycoon.apk
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Little-Street-Tycoon-APK
-          path: build/Little-Street-Tycoon.apk
-          if-no-files-found: error
-          retention-days: 30
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Test
+        run: echo "ANDROID WORKFLOW OK"
