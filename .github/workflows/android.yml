@@ -5,9 +5,14 @@ on:
     branches: ["main"]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -18,46 +23,84 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Configure Android SDK
+      - name: Verify Android SDK
+        shell: bash
         run: |
-          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
-          echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
-          echo "$ANDROID_SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+          set -euxo pipefail
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          test -d "$ANDROID_HOME"
+          test -x "$ANDROID_HOME/platform-tools/adb"
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
+          sdkmanager --version
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          test -d "$ANDROID_HOME/platforms/android-35"
+          test -d "$ANDROID_HOME/build-tools/35.0.0"
 
-      - name: Download Godot
+      - name: Download Godot 4.4
+        shell: bash
         run: |
+          set -euxo pipefail
           wget -q https://github.com/godotengine/godot/releases/download/4.4-stable/Godot_v4.4-stable_linux.x86_64.zip
           unzip -q Godot_v4.4-stable_linux.x86_64.zip
           chmod +x Godot_v4.4-stable_linux.x86_64
 
-      - name: Download Android export templates
+      - name: Install matching Godot Android templates
+        shell: bash
         run: |
-          mkdir -p ~/.local/share/godot/export_templates/4.4.stable
+          set -euxo pipefail
+          TEMPLATE_DIR="$HOME/.local/share/godot/export_templates/4.4.stable"
+          mkdir -p "$TEMPLATE_DIR"
           wget -q https://github.com/godotengine/godot/releases/download/4.4-stable/Godot_v4.4-stable_export_templates.tpz
+          rm -rf /tmp/godot-templates
+          mkdir -p /tmp/godot-templates
           unzip -q Godot_v4.4-stable_export_templates.tpz -d /tmp/godot-templates
-          cp -r /tmp/godot-templates/templates/* ~/.local/share/godot/export_templates/4.4.stable/
+          cp -a /tmp/godot-templates/templates/. "$TEMPLATE_DIR/"
+          test -f "$TEMPLATE_DIR/android_debug.apk"
+          test -f "$TEMPLATE_DIR/android_release.apk"
+          test -f "$TEMPLATE_DIR/version.txt"
+          cat "$TEMPLATE_DIR/version.txt"
 
-      - name: Configure Godot Android paths
+      - name: Configure Godot Android SDK paths
+        shell: bash
         run: |
-          mkdir -p ~/.config/godot
-          cat > ~/.config/godot/editor_settings-4.tres <<EOF
+          set -euxo pipefail
+          mkdir -p "$HOME/.config/godot"
+          cat > "$HOME/.config/godot/editor_settings-4.tres" <<EOF
 [gd_resource type="EditorSettings" format=3]
 
 [resource]
 export/android/java_sdk_path = "$JAVA_HOME"
-export/android/android_sdk_path = "$ANDROID_SDK_ROOT"
+export/android/android_sdk_path = "$ANDROID_HOME"
 EOF
+          grep -E "export/android/(java|android)_sdk_path" "$HOME/.config/godot/editor_settings-4.tres"
 
-      - name: Validate project
+      - name: Validate GDScript and project
+        shell: bash
         run: |
-          ./Godot_v4.4-stable_linux.x86_64 --headless --path . --editor --quit
+          set -euxo pipefail
+          ./Godot_v4.4-stable_linux.x86_64 --headless --path . --check-only --script res://main.gd
 
-      - name: Build Android APK
+      - name: Validate Android export configuration
+        shell: bash
         run: |
+          set -euxo pipefail
+          ./Godot_v4.4-stable_linux.x86_64 --headless --path . --editor --quit 2>&1 | tee godot-validation.log
+          if grep -q "SCRIPT ERROR:" godot-validation.log; then
+            echo "Godot reported a script error."
+            exit 1
+          fi
+
+      - name: Build installable Android APK
+        shell: bash
+        run: |
+          set -euxo pipefail
           mkdir -p build
-          ./Godot_v4.4-stable_linux.x86_64 --headless --path . --export-release "Android" build/Little-Street-Tycoon.apk
+          ./Godot_v4.4-stable_linux.x86_64 --headless --path . --export-debug "Android" build/Little-Street-Tycoon.apk 2>&1 | tee godot-export.log
+          test -s build/Little-Street-Tycoon.apk
+          file build/Little-Street-Tycoon.apk
+          unzip -t build/Little-Street-Tycoon.apk >/dev/null
+          ls -lh build/Little-Street-Tycoon.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -65,3 +108,4 @@ EOF
           name: Little-Street-Tycoon-APK
           path: build/Little-Street-Tycoon.apk
           if-no-files-found: error
+          retention-days: 14
