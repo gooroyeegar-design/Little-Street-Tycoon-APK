@@ -212,7 +212,7 @@ func try_select(screen_pos: Vector2):
 		var idx := clampi(int(round((x + 9.0) / 6.0)), 0, 3)
 		if abs(x - (-9.0 + idx * 6.0)) < 2.6:
 			selected_shop = idx
-			var cost := shop_prices[idx] * shop_levels[idx]
+			var cost: float = shop_prices[idx] * float(shop_levels[idx])
 			detail_label.text = "%s  |  Level %d  |  Upgrade: $%0.0f" % [shop_names[idx], shop_levels[idx], cost]
 			return
 	detail_label.text = "Select a business on the street"
@@ -221,7 +221,7 @@ func upgrade_selected():
 	if selected_shop < 0:
 		detail_label.text = "Select a business first"
 		return
-	var cost := shop_prices[selected_shop] * shop_levels[selected_shop]
+	var cost: float = shop_prices[selected_shop] * float(shop_levels[selected_shop])
 	if money < cost:
 		detail_label.text = "Not enough cash  |  Need $%0.0f" % cost
 		return
