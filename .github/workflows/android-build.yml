@@ -11,5 +11,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Install Java
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openjdk-17-jdk-headless
+          echo "JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64" >> "$GITHUB_ENV"
+
       - name: Test
-        run: echo "ANDROID WORKFLOW OK"
+        run: |
+          java -version
+          echo "ANDROID_HOME=$ANDROID_HOME"
