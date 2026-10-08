@@ -1,4 +1,4 @@
-name: Android APK
+name: Pizza Street Tycoon Android APK
 
 on:
   push:
@@ -81,27 +81,27 @@ jobs:
       - name: Validate GDScript
         run: |
           set -eux
-          ./Godot_v4.4-stable_linux.x86_64 --headless --path . --check-only --script res://main.gd
+          ./Godot_v4.4-stable_linux.x86_64 --headless --path pizza_tycoon --editor --quit 2>&1 | tee godot-validate.log
 
       - name: Import project
         run: |
           set -eux
-          ./Godot_v4.4-stable_linux.x86_64 --headless --path . --editor --quit 2>&1 | tee godot-import.log
+          ./Godot_v4.4-stable_linux.x86_64 --headless --path pizza_tycoon --editor --quit 2>&1 | tee godot-import.log
 
       - name: Export installable debug APK
         run: |
           set -eux
           mkdir -p build
-          ./Godot_v4.4-stable_linux.x86_64 --headless --path . --export-debug "Android" build/Little-Street-Tycoon.apk 2>&1 | tee godot-export.log
-          test -s build/Little-Street-Tycoon.apk
-          unzip -t build/Little-Street-Tycoon.apk >/dev/null
-          file build/Little-Street-Tycoon.apk
-          ls -lh build/Little-Street-Tycoon.apk
+          ./Godot_v4.4-stable_linux.x86_64 --headless --path pizza_tycoon --export-debug "Android" build/PizzaStreetTycoon.apk 2>&1 | tee godot-export.log
+          test -s build/PizzaStreetTycoon.apk
+          unzip -t build/PizzaStreetTycoon.apk >/dev/null
+          file build/PizzaStreetTycoon.apk
+          ls -lh build/PizzaStreetTycoon.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Little-Street-Tycoon-APK
-          path: build/Little-Street-Tycoon.apk
+          name: Pizza-Street-Tycoon-Android-APK
+          path: build/PizzaStreetTycoon.apk
           if-no-files-found: error
           retention-days: 30
