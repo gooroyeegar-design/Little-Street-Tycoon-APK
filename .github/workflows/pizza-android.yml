@@ -1,0 +1,47 @@
+name: Build Pizza Street Tycoon Android
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'pizza_tycoon/**'
+      - '.github/workflows/pizza-android.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Godot
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.3.0
+          use-dotnet: false
+
+      - name: Install Android export templates
+        run: |
+          mkdir -p ~/.local/share/godot/export_templates/4.3.0.stable
+          curl -L --fail --retry 3 https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_export_templates.tpz -o /tmp/templates.tpz
+          unzip -o /tmp/templates.tpz -d /tmp/godot-templates
+          cp /tmp/godot-templates/templates/* ~/.local/share/godot/export_templates/4.3.0.stable/
+
+      - name: Validate project
+        run: godot --headless --path pizza_tycoon --editor --quit
+
+      - name: Export Android APK
+        run: |
+          mkdir -p build
+          godot --headless --path pizza_tycoon --export-debug "Android" build/PizzaStreetTycoon.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pizza-Street-Tycoon-Android-APK
+          path: build/PizzaStreetTycoon.apk
+          if-no-files-found: error
+          retention-days: 14
