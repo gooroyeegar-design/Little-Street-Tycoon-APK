@@ -17,6 +17,7 @@ var hud: CanvasLayer
 var cash_label: Label
 var status_label: Label
 var joy_knob: ColorRect
+var joystick: Control
 var last_interaction := ""
 
 func _ready() -> void:
